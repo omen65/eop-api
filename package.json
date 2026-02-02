@@ -1,0 +1,29 @@
+{
+  "name": "essential-oil-pure-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "seed": "npx tsx prisma/seed.ts",
+    "db:reset": "npx prisma migrate reset"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "prisma": "^5.22.0",
+    "slugify": "^1.6.6",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.7.1"
+  }
+}

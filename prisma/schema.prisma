@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model products {
+  id          Int  @id @default(autoincrement())
+  category_id Int?
+
+  category categories? @relation(fields: [category_id], references: [id])
+
+  name        String  @db.VarChar(150)
+  slug        String  @unique @db.VarChar(150)
+  description String? @db.Text
+  image       String? @db.VarChar(255)
+
+  price    Int?
+  discount Int?
+
+  shopee_url    String? @db.VarChar(255)
+  tokopedia_url String? @db.VarChar(255)
+
+  is_active Boolean @default(true)
+
+  created_by Int?
+  creator    users? @relation("ProductCreator", fields: [created_by], references: [id])
+
+  updated_by Int?
+  updater    users? @relation("ProductUpdater", fields: [updated_by], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("products")
+}
+
+model categories {
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(100)
+  slug       String   @unique @db.VarChar(100)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  products products[]
+}
+
+model users {
+  id Int @id @default(autoincrement())
+
+  name     String @db.VarChar(100)
+  email    String @unique @db.VarChar(150)
+  password String @db.VarChar(255)
+
+  role      String  @default("admin")
+  is_active Boolean @default(true)
+
+  last_login_at DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  created_products products[] @relation("ProductCreator")
+  updated_products products[] @relation("ProductUpdater")
+
+  @@map("users")
+}
