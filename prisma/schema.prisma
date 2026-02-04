@@ -22,7 +22,7 @@ model products {
   name        String  @db.VarChar(150)
   slug        String  @unique @db.VarChar(150)
   description String? @db.Text
-  image       String? @db.VarChar(255)
+  image       String? @db.Text
 
   price    Int?
   discount Int?

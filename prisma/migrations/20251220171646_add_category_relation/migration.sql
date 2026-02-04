@@ -14,7 +14,7 @@ CREATE TABLE `products` (
     `name` VARCHAR(150) NOT NULL,
     `slug` VARCHAR(150) NOT NULL,
     `description` TEXT NULL,
-    `image` VARCHAR(255) NULL,
+    `image` TEXT NULL,
     `price` INTEGER NULL,
     `discount` INTEGER NULL,
     `shopee_url` VARCHAR(255) NULL,
