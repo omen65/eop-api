@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from "bcrypt"
 
@@ -51,13 +52,17 @@ async function main() {
     })
 
     // 3. Seed users
-    const password = await bcrypt.hash('masuk123', 10)
+    const adminPassword = process.env.ADMIN_PASSWORD || 'defaultpassword123'
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com'
+    const adminName = process.env.ADMIN_NAME || 'Admin'
+    
+    const password = await bcrypt.hash(adminPassword, 10)
     await prisma.users.upsert({
-        where: { email: 'admin@eop.com' },
+        where: { email: adminEmail },
         update: {},
         create: {
-            name: 'Admin',
-            email: 'admin@eop.com',
+            name: adminName,
+            email: adminEmail,
             password,
             role: 'admin',
             is_active: true
