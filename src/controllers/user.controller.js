@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import prisma from '../prisma.js'
 import { successResponse, errorResponse } from "../utils/response.js";
-import { validateAddUser, validateUpdateUser } from "../validators/user.validator.js";
+import { validateAddUser, validateUpdateUser, validateResetPassword } from "../validators/user.validator.js";
 
 export const getAllUsers = async (req, res) => {
     try {
@@ -26,14 +26,27 @@ export const getAllUsers = async (req, res) => {
             }
         }
         if (sort && sortDir) {
+            let sortField = sort
+            if (sort === 'latest' || sort === 'oldest') {
+                sortField = 'created_at'
+            }
             query.orderBy = {
-                [sort]: sortDir,
+                [sortField]: sortDir,
             }
         }
         const users = await prisma.users.findMany({
             ...query,
             skip: limitStart ? parseInt(limitStart) : undefined,
             take: limitEnd ? parseInt(limitEnd) - (limitStart ? parseInt(limitStart) : 0) : undefined,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                is_active: true,
+                created_at: true,
+                updated_at: true,
+            },
         })
 
         return successResponse(res, users)
@@ -62,6 +75,15 @@ export const addUser = async (req, res) => {
                 role,
                 is_active,
             },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                is_active: true,
+                created_at: true,
+                updated_at: true,
+            },
         })
 
         return successResponse(res, newUser, "User created")
@@ -76,6 +98,15 @@ export const detailUser = async (req, res) => {
 
         const user = await prisma.users.findUnique({
             where: { id: Number(id) },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                is_active: true,
+                created_at: true,
+                updated_at: true,
+            },
         })
 
         if (!user) {
@@ -113,6 +144,15 @@ export const updateUser = async (req, res) => {
         const updatedUser = await prisma.users.update({
             where: { id: userId },
             data,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                is_active: true,
+                created_at: true,
+                updated_at: true,
+            },
         })
 
         return successResponse(res, updatedUser, "User berhasil diperbarui")
@@ -130,6 +170,30 @@ export const deleteUser = async (req, res) => {
         })
 
         return successResponse(res, null, "User berhasil dihapus")
+    } catch (error) {
+        return errorResponse(res, error.message, 500)
+    }
+}
+
+export const resetPassword = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { password, confirmPassword } = req.body
+
+        // Validasi input
+        const errors = await validateResetPassword({ password, confirmPassword })
+        if (Object.keys(errors).length > 0) {
+            return errorResponse(res, "Gagal mereset password", 400, errors)
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10)
+
+        await prisma.users.update({
+            where: { id: Number(id) },
+            data: { password: hashedPassword },
+        })
+
+        return successResponse(res, null, "Password berhasil direset")
     } catch (error) {
         return errorResponse(res, error.message, 500)
     }
