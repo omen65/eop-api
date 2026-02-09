@@ -22,7 +22,7 @@ app.use('/users', userRoutes)
 app.use('/users', userRoutes)
 app.use('/contents', contentsRoutes)
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3002
 app.listen(PORT, () => {
     console.log(`API running on http://localhost:${PORT}`)
 })
