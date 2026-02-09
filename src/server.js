@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 import productsRoutes from './routes/products.routes.js'
 import categoriesRoutes from './routes/categories.routes.js'
 import authRoutes from './routes/auth.routes.js'
+import contentsRoutes from './routes/contents.routes.js'
 
 dotenv.config()
 
@@ -16,6 +17,7 @@ app.use(express.json())
 app.use('/products', productsRoutes)
 app.use('/categories', categoriesRoutes)
 app.use('/auth', authRoutes)
+app.use('/contents', contentsRoutes)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {

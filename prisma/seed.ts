@@ -63,6 +63,21 @@ async function main() {
             is_active: true
         }
     })
+
+    await prisma.contents.createMany({
+        data: [
+            { title: 'Company Name', content: null },
+            { title: 'Company Address', content: null },
+            { title: 'Company Email', content: null },
+            { title: 'Phone Number', content: null },
+            { title: 'Whatsapp Number', content: null },
+            { title: 'Google Map Embed Link', content: null },
+            { title: 'Operational', content: 'Mon – Fri: 08.00 – 18.00' },
+            { title: 'Instagram Link', content: null },
+            { title: 'Facebook Link', content: null },
+            { title: 'Tiktok Link', content: null }
+        ],
+    })
 }
 
 main()

@@ -74,3 +74,16 @@ model users {
 
   @@map("users")
 }
+
+model contents {
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  title      String?   @db.VarChar(255)
+  content    String?   @db.LongText
+  image      String?   @db.VarChar(255)
+  created_by String?   @db.VarChar(255)
+  updated_by String?   @db.VarChar(255)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@map("contents")
+}
