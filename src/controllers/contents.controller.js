@@ -100,7 +100,7 @@ export const contacts = async (req, res) => {
             where: {
                 id: {
                     gte: BigInt(1),
-                    lte: BigInt(10)
+                    lte: BigInt(12)
                 }
             },
             orderBy: {
@@ -119,6 +119,8 @@ export const contacts = async (req, res) => {
             instagram: contacts[7]?.content || null,
             facebook: contacts[8]?.content || null,
             tiktok: contacts[9]?.content || null,
+            shopee: contacts[10]?.content || null,
+            tokopedia: contacts[11]?.content || null,
         }
 
         return successResponse(res, data)
@@ -129,7 +131,7 @@ export const contacts = async (req, res) => {
 
 export const updateContacts = async (req, res) => {
     try {
-        const { name, address, email, phone, whatsapp, map, operational, instagram, facebook, tiktok } = req.body
+        const { name, address, email, phone, whatsapp, map, operational, instagram, facebook, tiktok, shopee, tokopedia } = req.body
 
         const userEmail = await getUserEmail(req)
 
@@ -145,6 +147,8 @@ export const updateContacts = async (req, res) => {
                 { id: BigInt(8), content: instagram },
                 { id: BigInt(9), content: facebook },
                 { id: BigInt(10), content: tiktok },
+                { id: BigInt(11), content: shopee },
+                { id: BigInt(12), content: tokopedia },
             ]
 
             for (const update of updates) {

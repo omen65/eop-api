@@ -78,9 +78,12 @@ async function main() {
             { title: 'Whatsapp Number', content: null },
             { title: 'Google Map Embed Link', content: null },
             { title: 'Operational', content: 'Mon – Fri: 08.00 – 18.00' },
-            { title: 'Instagram Link', content: null },
-            { title: 'Facebook Link', content: null },
-            { title: 'Tiktok Link', content: null }
+            { title: 'Instagram Link', content: 'https://www.instagram.com/serehcianjurselatan/' },
+            { title: 'Facebook Link', content: 'https://www.facebook.com/profile.php?id=61584453895187' },
+            { title: 'Tiktok Link', content: null },
+            { title: 'Shopee Link', content: 'https://shopee.co.id/berkahatsiri_cianjur'},
+            { title: 'Tokopedia Link', content: 'https://www.tokopedia.com/berkahatsiri'},
+
         ],
     })
 }

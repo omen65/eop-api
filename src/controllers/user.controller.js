@@ -13,8 +13,8 @@ export const getAllUsers = async (req, res) => {
             query = {
                 where: {
                     OR: [
-                        { name: { contains: search, mode: 'insensitive' } },
-                        { email: { contains: search, mode: 'insensitive' } },
+                        { name: { contains: search } },
+                        { email: { contains: search } },
                     ],
                 },
             }
@@ -51,7 +51,10 @@ export const getAllUsers = async (req, res) => {
 
         return successResponse(res, users)
     } catch (error) {
-        return errorResponse(res, error.message)
+        const message = error.message.includes('Unknown argument') 
+            ? "Parameter pencarian tidak valid"
+            : error.message
+        return errorResponse(res, message, 500)
     }
 }
 
