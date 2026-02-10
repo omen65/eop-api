@@ -174,12 +174,24 @@ export const createProduct = async (req, res) => {
         let image = null;
         if (req.files && req.files.length > 0) {
             const imageFiles = req.files.filter(file => file.fieldname.startsWith('images'));
+            console.log('[Products Create] Incoming files:', (req.files || []).length);
+            imageFiles.forEach((f, idx) => {
+                console.log(`[Products Create] File[${idx}]`, {
+                    fieldname: f.fieldname,
+                    originalname: f.originalname,
+                    mimetype: f.mimetype,
+                    size: (f.size ?? f.buffer?.length ?? null),
+                });
+            });
             if (imageFiles.length > 0) {
                 try {
                     const uploadPromises = imageFiles.map(file => uploadGCS(file, 'products'));
                     const imageUrls = await Promise.all(uploadPromises);
                     image = JSON.stringify(imageUrls);
                 } catch (uploadErr) {
+                    console.error('[Products Create] Upload error:', uploadErr?.code, uploadErr?.message);
+                    console.error('[Products Create] Stack:', uploadErr?.stack);
+                    console.error('[Products Create] APP_ENV:', process.env.APP_ENV, 'Bucket:', process.env.GOOGLE_CLOUD_BUCKET);
                     return errorResponse(res, `Upload failed: ${uploadErr.message}`, 500);
                 }
             }
@@ -308,11 +320,23 @@ export const updateProduct = async (req, res) => {
 
         // Upload new image files
         if (newImageFiles && newImageFiles.length > 0) {
+            console.log('[Products Update] New image files:', newImageFiles.length);
+            newImageFiles.forEach((f, idx) => {
+                console.log(`[Products Update] File[${idx}]`, {
+                    fieldname: f.fieldname,
+                    originalname: f.originalname,
+                    mimetype: f.mimetype,
+                    size: (f.size ?? f.buffer?.length ?? null),
+                });
+            });
             try {
                 const uploadPromises = newImageFiles.map(file => uploadGCS(file, 'products'));
                 const uploadedUrls = await Promise.all(uploadPromises);
                 newImages = [...newImages, ...uploadedUrls];
             } catch (uploadErr) {
+                console.error('[Products Update] Upload error:', uploadErr?.code, uploadErr?.message);
+                console.error('[Products Update] Stack:', uploadErr?.stack);
+                console.error('[Products Update] APP_ENV:', process.env.APP_ENV, 'Bucket:', process.env.GOOGLE_CLOUD_BUCKET);
                 return errorResponse(res, `Upload failed: ${uploadErr.message}`, 500);
             }
         }
