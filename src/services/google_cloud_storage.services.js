@@ -35,10 +35,15 @@ export const uploadGCS = (file, directory, isPublic = true) => {
             return reject(new Error('No file provided'));
         }
 
-        const ext = path.extname(file.originalname).slice(1);
+        const extWithDot = path.extname(file.originalname || '');
         const uuid = randomUUID();
         const prefix = getEnvPrefix();
-        const gcsFileName = path.posix.join(prefix, directory, `${uuid}.${ext}`);
+        const gcsFileName = path.posix.join(prefix, directory, `${uuid}${extWithDot}`);
+        const gcsFile = bucket.file(gcsFileName);
+
+        const hasBuffer = !!file.buffer && file.buffer.length > 0;
+        const hasPath = !!file.path && fs.existsSync(file.path);
+
         console.log('[GCS Upload] Starting upload', {
             bucket: bucket?.name,
             directory,
@@ -47,23 +52,12 @@ export const uploadGCS = (file, directory, isPublic = true) => {
             originalname: file.originalname,
             mimetype: file.mimetype,
             size: (file.size ?? file.buffer?.length ?? null),
+            hasBuffer,
+            hasPath,
             appEnv: process.env.APP_ENV,
         });
-        const gcsFile = bucket.file(gcsFileName);
 
-        const stream = gcsFile.createWriteStream({
-            metadata: {
-                contentType: file.mimetype,
-            },
-        });
-
-        stream.on('error', (err) => {
-            console.error('[GCS Upload] Stream error:', err?.code, err?.message);
-            console.error('[GCS Upload] Stack:', err?.stack);
-            reject(err);
-        });
-
-        stream.on('finish', async () => {
+        const finalize = async () => {
             try {
                 if (!isPublic) {
                     const [url] = await gcsFile.getSignedUrl({
@@ -72,21 +66,67 @@ export const uploadGCS = (file, directory, isPublic = true) => {
                     });
                     console.log('[GCS Upload] Signed URL generated:', url);
                     return resolve(url);
-                } else {
-                    await gcsFile.makePublic();
                 }
-
+                try {
+                    await gcsFile.makePublic();
+                    console.log('[GCS Upload] Object made public:', gcsFileName);
+                } catch (aclErr) {
+                    console.warn('[GCS Upload] makePublic failed (continuing):', aclErr?.message);
+                }
                 const publicUrl = `https://storage.googleapis.com/${bucket.name}/${gcsFileName}`;
                 console.log('[GCS Upload] Public URL:', publicUrl);
                 resolve(publicUrl);
             } catch (err) {
-                console.error('[GCS Upload] Finish handler error:', err?.code, err?.message);
+                console.error('[GCS Upload] Finalize error:', err?.code, err?.message);
                 console.error('[GCS Upload] Stack:', err?.stack);
                 reject(err);
             }
-        });
+        };
 
-        stream.end(file.buffer);
+        // Prefer buffer; fallback to disk path
+        if (hasBuffer) {
+            gcsFile.save(file.buffer, {
+                resumable: false,
+                contentType: file.mimetype,
+                metadata: { cacheControl: 'public, max-age=31536000' },
+            })
+                .then(() => finalize())
+                .catch((err) => {
+                    console.error('[GCS Upload] save() error:', err?.code, err?.message);
+                    console.error('[GCS Upload] Stack:', err?.stack);
+                    reject(err);
+                });
+        } else if (hasPath) {
+            const read = fs.createReadStream(file.path);
+            const write = gcsFile.createWriteStream({
+                resumable: false,
+                metadata: {
+                    contentType: file.mimetype,
+                    cacheControl: 'public, max-age=31536000',
+                },
+            });
+            read.on('error', (err) => {
+                console.error('[GCS Upload] Read stream error:', err?.code, err?.message);
+                console.error('[GCS Upload] Stack:', err?.stack);
+                reject(err);
+            });
+            write.on('error', (err) => {
+                console.error('[GCS Upload] Write stream error:', err?.code, err?.message);
+                console.error('[GCS Upload] Stack:', err?.stack);
+                reject(err);
+            });
+            write.on('finish', async () => {
+                await finalize();
+                // Cleanup temp file
+                fs.unlink(file.path, (e) => {
+                    if (e) console.warn('[GCS Upload] Temp file cleanup failed:', e?.message);
+                });
+            });
+            read.pipe(write);
+        } else {
+            console.error('[GCS Upload] No buffer or path on uploaded file');
+            reject(new Error('No buffer or path on uploaded file'));
+        }
     });
 }
 
