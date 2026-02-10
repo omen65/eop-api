@@ -2,6 +2,15 @@ import prisma from '../prisma.js'
 import { successResponse, errorResponse } from '../utils/response.js'
 import { getUserEmail } from '../helpers/auth.helper.js'
 
+// Helper to serialize BigInt fields to string
+const serializeContent = (content) => {
+    if (!content) return null;
+    return {
+        ...content,
+        id: content.id.toString(),
+    };
+};
+
 export const getContents = async (req, res) => {
     try {
         const contents = await prisma.contents.findMany({
@@ -10,7 +19,8 @@ export const getContents = async (req, res) => {
             },
         })
 
-        return successResponse(res, contents)
+        const serialized = contents.map(serializeContent);
+        return successResponse(res, serialized)
     } catch (error) {
         return errorResponse(res, error.message)
     }
@@ -28,7 +38,7 @@ export const getContentById = async (req, res) => {
             return errorResponse(res, 'Content not found', 404)
         }
 
-        return successResponse(res, content)
+        return successResponse(res, serializeContent(content))
     } catch (error) {
         return errorResponse(res, error.message)
     }
@@ -51,7 +61,7 @@ export const createContent = async (req, res) => {
             },
         })
 
-        return successResponse(res, newContent, "Content created")
+        return successResponse(res, serializeContent(newContent), "Content created")
     } catch (error) {
         return errorResponse(res, error.message, 500)
     }
@@ -74,7 +84,7 @@ export const updateContent = async (req, res) => {
             data,
         })
 
-        return successResponse(res, updatedContent, "Content updated")
+        return successResponse(res, serializeContent(updatedContent), "Content updated")
     } catch (error) {
         return errorResponse(res, error.message, 500)
     }
