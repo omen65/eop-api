@@ -3,6 +3,7 @@ import slugify from 'slugify'
 import { successResponse, errorResponse } from '../utils/response.js'
 import { getProductsQuerySchema, getProductBySlugSchema } from '../validators/product.validator.js'
 import { uploadGCS, deleteGCS } from '../services/google_cloud_storage.services.js'
+import * as XLSX from 'xlsx'
 
 
 export const getProducts = async (req, res) => {
@@ -405,6 +406,151 @@ export const deleteProduct = async (req, res) => {
         });
 
         return successResponse(res, null, "Product deleted");
+    } catch (err) {
+        return errorResponse(res, err.message, 500);
+    }
+};
+
+/* ======================
+   ADMIN: IMPORT PRODUCTS FROM EXCEL
+====================== */
+export const importProducts = async (req, res) => {
+    try {
+        if (!req.file) {
+            return errorResponse(res, "Excel file is required", 400);
+        }
+
+        // Parse Excel file
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(worksheet);
+
+        if (!data || data.length === 0) {
+            return errorResponse(res, "Excel file is empty", 400);
+        }
+
+        // Ambil semua categories untuk mapping
+        const categories = await prisma.categories.findMany({
+            select: { id: true, name: true }
+        });
+
+        const categoryMap = {};
+        categories.forEach(cat => {
+            categoryMap[cat.name.toLowerCase()] = cat.id;
+        });
+
+        const results = {
+            success: 0,
+            failed: 0,
+            errors: []
+        };
+
+        // Process each row
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i];
+            
+            try {
+                // Map Excel columns ke field database
+                const productName = row['Nama Produk'];
+                const categoryName = row['Kategori'];
+                const priceRaw = row['Harga Awal'];
+                const discountRaw = row['Diskon'];
+                const shopeeUrl = row['Link Shopee'];
+                const tokopediaUrl = row['Link Tokopedia'];
+
+                // Validasi
+                if (!productName) {
+                    results.failed++;
+                    results.errors.push(`Row ${i + 2}: Nama Produk tidak boleh kosong`);
+                    continue;
+                }
+
+                // Parse price - handle format: "Rp8.500", "8.500", "8500", etc
+                const parsePrice = (value) => {
+                    if (!value) return null;
+                    const cleaned = String(value).replace(/[Rp.,\s]/g, '');
+                    const parsed = parseInt(cleaned);
+                    return isNaN(parsed) ? null : parsed;
+                };
+
+                const price = parsePrice(priceRaw);
+                const discount = parsePrice(discountRaw);
+
+                // Cari atau buat category_id berdasarkan nama category
+                let categoryId = null;
+                if (categoryName) {
+                    const categoryKey = categoryName.toLowerCase();
+                    
+                    // Cek apakah kategori sudah ada di map
+                    if (categoryMap[categoryKey]) {
+                        categoryId = categoryMap[categoryKey];
+                    } else {
+                        // Kategori belum ada, create baru
+                        try {
+                            const newCategory = await prisma.categories.create({
+                                data: {
+                                    name: categoryName,
+                                    slug: slugify(categoryName, { lower: true }),
+                                    is_active: true
+                                }
+                            });
+                            categoryId = newCategory.id;
+                            categoryMap[categoryKey] = categoryId; // Simpan ke map untuk row selanjutnya
+                        } catch (catError) {
+                            results.failed++;
+                            results.errors.push(`Row ${i + 2}: Gagal membuat kategori '${categoryName}': ${catError.message}`);
+                            continue;
+                        }
+                    }
+                }
+
+                const slug = slugify(productName, { lower: true });
+
+                // Cek apakah product sudah ada (skip atau update bisa disesuaikan)
+                const existingProduct = await prisma.products.findUnique({
+                    where: { slug }
+                });
+
+                if (existingProduct) {
+                    // Update existing product
+                    await prisma.products.update({
+                        where: { slug },
+                        data: {
+                            name: productName,
+                            category_id: categoryId,
+                            price: price,
+                            discount: discount,
+                            shopee_url: shopeeUrl || null,
+                            tokopedia_url: tokopediaUrl || null,
+                            updated_by: req.user.id,
+                        }
+                    });
+                } else {
+                    // Create new product
+                    await prisma.products.create({
+                        data: {
+                            name: productName,
+                            slug,
+                            category_id: categoryId,
+                            price: price,
+                            discount: discount,
+                            shopee_url: shopeeUrl || null,
+                            tokopedia_url: tokopediaUrl || null,
+                            is_active: true,
+                            created_by: req.user.id,
+                        }
+                    });
+                }
+
+                results.success++;
+            } catch (error) {
+                results.failed++;
+                results.errors.push(`Row ${i + 2}: ${error.message}`);
+            }
+        }
+
+        return successResponse(res, results, `Import completed: ${results.success} success, ${results.failed} failed`);
     } catch (err) {
         return errorResponse(res, err.message, 500);
     }
